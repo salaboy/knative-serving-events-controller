@@ -12,4 +12,5 @@ require (
 	knative.dev/hack v0.0.0-20211222071919-abd085fc43de
 	knative.dev/hack/schema v0.0.0-20211222071919-abd085fc43de
 	knative.dev/pkg v0.0.0-20220104185830-52e42b760b54
+	knative.dev/serving v0.28.0
 )
