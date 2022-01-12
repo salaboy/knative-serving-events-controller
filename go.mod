@@ -3,6 +3,7 @@ module knative.dev/sample-controller
 go 1.15
 
 require (
+	github.com/cloudevents/sdk-go/v2 v2.8.0
 	go.uber.org/zap v1.19.1
 	k8s.io/api v0.22.5
 	k8s.io/apimachinery v0.22.5
