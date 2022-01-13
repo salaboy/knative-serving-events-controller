@@ -10,6 +10,8 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/tracker"
 
+	servingv1 "knative.dev/serving/pkg/apis/serving/v1"
+	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/revision"
 	serviceinformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/service"
 	servicereconciler "knative.dev/serving/pkg/client/injection/reconciler/serving/v1/service"
 )
@@ -19,6 +21,8 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 
 		servingInformer := serviceinformer.Get(ctx)
+		revisionInformer := revisioninformer.Get(ctx)
+
 		r := &Reconciler{}
 
 		impl := servicereconciler.NewImpl(ctx, r, func(impl *controller.Impl) controller.Options {
@@ -26,11 +30,14 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 		})
 
 		logger.Info("Setting up event handlers")
-		servingInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    impl.Enqueue,
-			UpdateFunc: controller.PassNew(impl.Enqueue),
-			DeleteFunc: impl.Enqueue,
-		})
+		servingInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+
+		handleControllerOf := cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&servingv1.Service{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		}
+
+		revisionInformer.Informer().AddEventHandler(handleControllerOf)
 
 		r.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
 
