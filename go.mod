@@ -3,7 +3,9 @@ module knative.dev/sample-controller
 go 1.15
 
 require (
+	github.com/cdfoundation/sig-events/cde/sdk/go v0.0.0-20211122192319-2ad36f58fc2c
 	github.com/cloudevents/sdk-go/v2 v2.8.0
+	github.com/satori/go.uuid v1.2.0
 	go.uber.org/zap v1.19.1
 	k8s.io/api v0.22.5
 	k8s.io/apimachinery v0.22.5

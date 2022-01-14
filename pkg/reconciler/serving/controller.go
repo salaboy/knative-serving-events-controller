@@ -13,7 +13,10 @@ import (
 	servingv1 "knative.dev/serving/pkg/apis/serving/v1"
 	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/revision"
 	serviceinformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/service"
+
 	servicereconciler "knative.dev/serving/pkg/client/injection/reconciler/serving/v1/service"
+
+	servingclient "knative.dev/serving/pkg/client/injection/client"
 )
 
 func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
@@ -23,7 +26,9 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 		servingInformer := serviceinformer.Get(ctx)
 		revisionInformer := revisioninformer.Get(ctx)
 
-		r := &Reconciler{}
+		r := &Reconciler{
+			client: servingclient.Get(ctx),
+		}
 
 		impl := servicereconciler.NewImpl(ctx, r, func(impl *controller.Impl) controller.Options {
 			return controller.Options{}
