@@ -46,7 +46,6 @@ func withCloudEventClient(ctx context.Context, cfg *rest.Config) context.Context
 		logger.Panicf("Error creating the cloudevents http protocol: %s", err)
 	}
 
-	logger.Info("*************************** Creating cloudevents Client *************************")
 	cloudEventClient, err := cloudevents.NewClient(protocol, cloudevents.WithUUIDs(), cloudevents.WithTimeNow())
 	if err != nil {
 		logger.Panicf("Error creating the cloudevents client: %s", err)
@@ -67,6 +66,10 @@ func Get(ctx context.Context) cloudevents.Client {
 
 	client := untyped.(cloudevents.Client)
 	return client
+}
+
+func ToContext(ctx context.Context, client cloudevents.Client) context.Context {
+	return context.WithValue(ctx, CECKey{}, client)
 }
 
 func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) {
@@ -91,10 +94,15 @@ func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) {
 		event.SetType(cdEvent.String())
 		event.SetTime(time.Now())
 
-		result := client.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), event)
-		if !cloudevents.IsACK(result) {
-			logger.Warnf("Failed to send cloudevent: %s", result.Error())
+		err := client.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), event)
+		if !cloudevents.IsACK(err) {
+			logger.Warnf("Failed to send cloudevent: %s", err.Error())
 		}
+
+		if err != nil {
+			logger.Errorf("failed sending cloud event, error: %s", err.Error())
+		}
+
 	default:
 		logger.Warnf("unknown event type %s", eventType)
 	}

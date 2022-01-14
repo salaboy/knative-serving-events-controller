@@ -10,6 +10,7 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/tracker"
 
+	cloudeventclient "knative.dev/sample-controller/pkg/cloudevents"
 	servingv1 "knative.dev/serving/pkg/apis/serving/v1"
 	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/revision"
 	serviceinformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/service"
@@ -27,7 +28,8 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 		revisionInformer := revisioninformer.Get(ctx)
 
 		r := &Reconciler{
-			client: servingclient.Get(ctx),
+			client:           servingclient.Get(ctx),
+			cloudEventClient: cloudeventclient.Get(ctx),
 		}
 
 		impl := servicereconciler.NewImpl(ctx, r, func(impl *controller.Impl) controller.Options {

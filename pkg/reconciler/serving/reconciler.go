@@ -7,7 +7,7 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
-	cloudevent "knative.dev/sample-controller/pkg/cloudevents"
+	cloudeventclient "knative.dev/sample-controller/pkg/cloudevents"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
 
 	clientset "knative.dev/serving/pkg/client/clientset/versioned"
@@ -15,7 +15,7 @@ import (
 
 type Reconciler struct {
 	tracker          tracker.Interface
-	cloudEventClient *cloudevents.Client
+	cloudEventClient cloudevents.Client
 
 	client clientset.Interface
 }
@@ -28,7 +28,7 @@ type Reconciler struct {
 // will always have an empty deletion timestamp.
 func (r *Reconciler) ReconcileKind(ctx context.Context, ksvc *v1.Service) reconciler.Event {
 	logger := logging.FromContext(ctx)
-
+	ctx = cloudeventclient.ToContext(ctx, r.cloudEventClient)
 	logger.Infof("Reconciling %s", ksvc.Name)
 
 	/*
@@ -42,7 +42,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ksvc *v1.Service) reconc
 	if ksvc.ObjectMeta.Generation == 1 {
 		// new object, log new event
 		logger.Infof("service deployed %v", ksvc)
-		cloudevent.SendEvent(ctx, cloudevent.ServiceDeployed, ksvc)
+		cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceDeployed, ksvc)
 	}
 
 	return nil
