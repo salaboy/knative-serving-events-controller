@@ -90,6 +90,7 @@ func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) {
 	switch eventType {
 	case ServiceDeployed:
 		event := cloudevents.NewEvent()
+		event.SetSource(obj.GetNamespace() + "/" + obj.GetName())
 		event.SetID(uuid.NewV4().String())
 		event.SetType(cdEvent.String())
 		event.SetTime(time.Now())
