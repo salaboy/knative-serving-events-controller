@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+
 	// The set of controllers this controller process runs.
 
 	"knative.dev/sample-controller/pkg/reconciler/serving"
@@ -29,6 +30,7 @@ func main() {
 	sharedmain.Main("controller",
 		// addressableservice.NewController,
 		// simpledeployment.NewController,
-		serving.NewController(),
+		serving.NewController,
 	)
+
 }
