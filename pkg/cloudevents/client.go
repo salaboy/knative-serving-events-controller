@@ -89,23 +89,53 @@ func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) {
 
 	switch eventType {
 	case ServiceDeployed:
-		event := cloudevents.NewEvent()
-		event.SetSource(obj.GetNamespace() + "/" + obj.GetName())
-		event.SetID(uuid.NewV4().String())
-		event.SetType(cdEvent.String())
-		event.SetTime(time.Now())
+		event := createEvent(cdEvent.String(), obj)
 
-		err := client.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), event)
-		if !cloudevents.IsACK(err) {
-			logger.Warnf("Failed to send cloudevent: %s", err.Error())
+		ctx := injectIntoContext(ctx, "http://localhost:8080")
+		result := client.Send(ctx, event)
+		if !cloudevents.IsACK(result) {
+			logger.Warnf("Failed to send cloudevent: %s", result.Error())
 		}
 
-		if err != nil {
-			logger.Errorf("failed sending cloud event, error: %s", err.Error())
+		if cloudevents.IsUndelivered(result) {
+			logger.Errorf("failed sending cloud event, error: %s", result.Error())
 		}
+
+		logger.Infof("Sent event for %s type", ServiceDeployed)
+
+	case ServiceUpgraded:
+		event := createEvent(cdEvent.String(), obj)
+		ctx := injectIntoContext(ctx, "http://localhost:8080")
+		result := client.Send(ctx, event)
+		if !cloudevents.IsACK(result) {
+			logger.Warnf("Failed to send cloudevent: %s", result.Error())
+		}
+
+		if cloudevents.IsUndelivered(result) {
+			logger.Errorf("cloud event undelivered, error: %s", result.Error())
+		}
+
+		logger.Infof("Sent event for %s type", ServiceUpgraded)
 
 	default:
 		logger.Warnf("unknown event type %s", eventType)
 	}
 
+}
+
+func injectIntoContext(c context.Context, target string) context.Context {
+	ctx := cloudevents.ContextWithRetriesExponentialBackoff(c, 10*time.Millisecond, 10)
+	ctx = cloudevents.ContextWithTarget(ctx, target)
+
+	return ctx
+}
+
+func createEvent(cdEventType string, obj *v1.Service) cloudevents.Event {
+	event := cloudevents.NewEvent()
+	event.SetSource(obj.GetNamespace() + "/" + obj.GetName())
+	event.SetID(uuid.NewV4().String())
+	event.SetType(cdEventType)
+	event.SetTime(time.Now())
+
+	return event
 }

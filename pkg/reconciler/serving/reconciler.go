@@ -43,6 +43,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ksvc *v1.Service) reconc
 		// new object, log new event
 		logger.Infof("service deployed %v", ksvc)
 		cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceDeployed, ksvc)
+	} else if ksvc.ObjectMeta.Generation > 1 {
+		logger.Infof("service upgraded %#v", ksvc)
+		cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceUpgraded, ksvc)
 	}
 
 	return nil
