@@ -1,0 +1,40 @@
+@startuml
+note left "User": New creation
+User -> "k8S API Server" : Create ksvc
+note over "k8S API Server","Controller Reconcile": Generation 1
+"k8S API Server" -> "Controller Reconcile" : Event
+activate "Controller Reconcile"
+"Controller Reconcile" -> "cloudevent client": Process event
+note over "cloudevent client","cloudevent receiver": cd.service.deployed
+"cloudevent client" -> "cloudevent receiver": send the relevant event
+deactivate "Controller Reconcile"
+
+newpage updation
+
+note left "User": Update ksvc
+User -> "k8S API Server" : Update ksvc
+note over "k8S API Server","Controller Reconcile": Generation >1
+"k8S API Server" -> "Controller Reconcile" : Event
+activate "Controller Reconcile"
+"Controller Reconcile" -> "cloudevent client": Process event
+note over "cloudevent client","cloudevent receiver": cd.service.upgraded
+"cloudevent client" -> "cloudevent receiver": send the relevant event
+deactivate "Controller Reconcile"
+
+newpage reverse
+
+note left "User": Reverse flow
+note over "cloudevent client","cloudevent receiver": cd.service.created
+"cloudevent client" -> "cloudevent receiver": Event created
+"cloudevent receiver" -> "handler" : event handler with details
+"handler" -> "servingv1 clientset" : if eventtype == cd.service.created
+"servingv1 clientset" -> "k8S API Server": Create ksvc
+
+note over "Controller Reconcile": Generation 1
+"k8S API Server" -> "Controller Reconcile" : Event
+activate "Controller Reconcile"
+"Controller Reconcile" -> "cloudevent client": Process event
+note over "cloudevent client","cloudevent receiver": cd.service.deployed
+"cloudevent client" -> "cloudevent receiver": send the relevant event
+deactivate "Controller Reconcile"
+@enduml
