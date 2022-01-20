@@ -14,10 +14,6 @@ install-knative:
 			  --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
 
 
-
-install-knative-serving:
-	kubectl apply -f knative-serving.yaml
-
 install-crds:
 	for crd in config; \
 	do \
