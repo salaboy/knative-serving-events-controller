@@ -15,6 +15,10 @@ The following roughly defines the controller components:
 3. Embed the [CloudEvents](github.com/cloudevents/sdk-go/v2) SDK client.
 4. We also register a CloudEvents 'receiver' which listens at port `8080`.
 
+The following sequence diagram shows the interaction between the components 
+
+![sequence](sequence_diagram.png)
+
 ### Testing and running the controller
 1. Setup a test cluster using KIND with `make cluster`
 2. Install Knative with `make install-knative`
