@@ -16,7 +16,7 @@ install-knative:
 
 
 install-crds:
-	for crd in config; \
+	for crd in config/crds; \
 	do \
 		kubectl apply -f "$$crd"; \
 	done
