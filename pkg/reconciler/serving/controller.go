@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/kelseyhightower/envconfig"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -21,8 +22,19 @@ import (
 	servingclient "knative.dev/serving/pkg/client/injection/client"
 )
 
+type Config struct {
+	EventSink string `default:"http://localhost:8080"`
+}
+
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	logger := logging.FromContext(ctx)
+
+	var cfg Config
+
+	err := envconfig.Process("", &cfg)
+	if err != nil {
+		panic(err)
+	}
 
 	servingInformer := serviceinformer.Get(ctx)
 	revisionInformer := revisioninformer.Get(ctx)
@@ -30,6 +42,7 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 	r := &Reconciler{
 		client:           servingclient.Get(ctx),
 		cloudEventClient: cloudeventclient.Get(ctx),
+		config:           cfg,
 	}
 
 	go handlers.StartReceiver(ctx)

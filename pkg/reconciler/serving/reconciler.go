@@ -17,6 +17,7 @@ type Reconciler struct {
 	tracker          tracker.Interface
 	cloudEventClient cloudevents.Client
 
+	config Config
 	client clientset.Interface
 }
 
@@ -29,6 +30,7 @@ type Reconciler struct {
 func (r *Reconciler) ReconcileKind(ctx context.Context, ksvc *v1.Service) reconciler.Event {
 	logger := logging.FromContext(ctx)
 	ctx = cloudeventclient.ToContext(ctx, r.cloudEventClient)
+	ctx = cloudeventclient.SetTarget(ctx, r.config.EventSink)
 	logger.Infof("Reconciling %s", ksvc.Name)
 
 	/*

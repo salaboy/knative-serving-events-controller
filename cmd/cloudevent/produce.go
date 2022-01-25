@@ -25,7 +25,7 @@ func main() {
 	})
 
 	// Set a target.
-	ctx := cloudevents.ContextWithTarget(context.Background(), "http://localhost:8080/")
+	ctx := cloudevents.ContextWithTarget(context.Background(), "http://localhost:10000/")
 
 	// Send that Event.
 	if result := c.Send(ctx, event); cloudevents.IsUndelivered(result) {

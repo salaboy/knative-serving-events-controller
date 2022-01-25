@@ -2,6 +2,7 @@
 SYSTEM_NAMESPACE ?= default
 METRICS_DOMAIN ?= example.com
 CLUSTER_NAME ?= knative-test
+EVENTSINK ?= http://localhost:10000
 
 install-knative:
 	kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.1.0/serving-crds.yaml

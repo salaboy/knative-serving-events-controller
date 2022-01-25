@@ -34,6 +34,12 @@ type KServiceToCDEventMap map[KServiceEvent]cdevents.CDEventType
 
 type CECKey struct{}
 
+type Key int
+
+const (
+	EventSink Key = iota
+)
+
 func init() {
 	injection.Default.RegisterClient(withCloudEventClient)
 }
@@ -72,6 +78,10 @@ func ToContext(ctx context.Context, client cloudevents.Client) context.Context {
 	return context.WithValue(ctx, CECKey{}, client)
 }
 
+func SetTarget(ctx context.Context, target string) context.Context {
+	return context.WithValue(ctx, EventSink, target)
+}
+
 func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) {
 	logger := logging.FromContext(ctx)
 
@@ -91,7 +101,9 @@ func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) {
 	case ServiceDeployed:
 		event := createEvent(cdEvent.String(), obj)
 
-		ctx := injectIntoContext(ctx, "http://localhost:8080")
+		target := ctx.Value(EventSink).(string)
+
+		ctx := injectIntoContext(ctx, target)
 		result := client.Send(ctx, event)
 		if !cloudevents.IsACK(result) {
 			logger.Warnf("Failed to send cloudevent: %s", result.Error())
