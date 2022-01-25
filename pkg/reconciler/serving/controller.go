@@ -11,8 +11,8 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/tracker"
 
-	cloudeventclient "knative.dev/sample-controller/pkg/cloudevents"
-	"knative.dev/sample-controller/pkg/server/handlers"
+	cloudeventclient "github.com/salaboy/knative-serving-events-controller/pkg/cloudevents"
+	"github.com/salaboy/knative-serving-events-controller/pkg/server/handlers"
 	servingv1 "knative.dev/serving/pkg/apis/serving/v1"
 	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/revision"
 	serviceinformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/service"

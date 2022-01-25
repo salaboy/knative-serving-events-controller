@@ -3,6 +3,8 @@ SYSTEM_NAMESPACE ?= default
 METRICS_DOMAIN ?= example.com
 CLUSTER_NAME ?= knative-test
 EVENTSINK ?= http://localhost:10000
+KO_DOCKER_REPO ?= localhost:5000
+KIND_CLUSTER_NAME ?= knative-test
 
 install-knative:
 	kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.1.0/serving-crds.yaml
@@ -35,3 +37,8 @@ cluster:
 
 delete-cluster:
 	kind delete cluster --name ${CLUSTER_NAME}
+	docker stop kind-registry
+	docker rm kind-registry
+
+cluster-with-registry:
+	./kind-with-registry.sh

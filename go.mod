@@ -1,4 +1,4 @@
-module knative.dev/sample-controller
+module github.com/salaboy/knative-serving-events-controller
 
 go 1.15
 

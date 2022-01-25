@@ -9,7 +9,7 @@ import (
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"knative.dev/pkg/logging"
-	"knative.dev/sample-controller/pkg/server/models"
+	"github.com/salaboy/knative-serving-events-controller/pkg/server/models"
 	servingv1 "knative.dev/serving/pkg/apis/serving/v1"
 )
 

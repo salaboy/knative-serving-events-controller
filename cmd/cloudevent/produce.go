@@ -5,7 +5,7 @@ import (
 	"log"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"knative.dev/sample-controller/pkg/server/models"
+	"github.com/salaboy/knative-serving-events-controller/pkg/server/models"
 )
 
 func main() {

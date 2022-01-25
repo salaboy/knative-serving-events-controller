@@ -7,7 +7,7 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
-	cloudeventclient "knative.dev/sample-controller/pkg/cloudevents"
+	cloudeventclient "github.com/salaboy/knative-serving-events-controller/pkg/cloudevents"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
 
 	clientset "knative.dev/serving/pkg/client/clientset/versioned"
