@@ -15,8 +15,8 @@
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: knative-samples-namespace-rbac
-  namespace: knative-samples
+  name: knative-serving-events-namespace-rbac
+  namespace: default
   labels:
     samples.knative.dev/release: devel
 rules:
