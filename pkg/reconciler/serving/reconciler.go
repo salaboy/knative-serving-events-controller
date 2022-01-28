@@ -17,6 +17,8 @@ import (
 
 const (
 	LastActiveRevision = "experimental.serving.knative.dev/last-active-annotaion"
+
+	Finalizer = "experimental.serving.knative.dev"
 )
 
 type Reconciler struct {
@@ -48,6 +50,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ksvc *v1.Service) reconc
 		}
 	*/
 
+	if !r.checkFinalizer(ctx, ksvc) {
+		return r.setFinalizer(ctx, ksvc)
+	}
+
 	revision, ok := ksvc.Annotations[LastActiveRevision]
 	if !ok {
 		// logger.Infof("annotation does not exist, checking if latest revision is ready")
@@ -61,6 +67,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ksvc *v1.Service) reconc
 			// trigger event for deployed
 			logger.Infof("********* service deployed %s **********", ksvc.GetName())
 			cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceDeployed, ksvc)
+
 		}
 
 		return nil
@@ -83,6 +90,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ksvc *v1.Service) reconc
 		return nil
 	}
 
+	if !ksvc.DeletionTimestamp.IsZero() {
+		logger.Info("+++++++++++++++++++++ detected service deletion ++++++++++++++++++")
+	}
+
 	// TODO: implement spec upgrade detection
 	/*
 		if ksvc.ObjectMeta.Generation == 1 {
@@ -94,6 +105,29 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ksvc *v1.Service) reconc
 			cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceUpgraded, ksvc)
 		}
 	*/
+
+	return nil
+}
+
+func (r *Reconciler) checkFinalizer(ctx context.Context, ksvc *v1.Service) bool {
+	for _, f := range ksvc.Finalizers {
+		if f == Finalizer {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (r *Reconciler) setFinalizer(ctx context.Context, ksvc *v1.Service) error {
+	logger := logging.FromContext(ctx)
+
+	ksvc.Finalizers = append(ksvc.Finalizers, Finalizer)
+	_, err := r.client.ServingV1().Services(ksvc.Namespace).Update(ctx, ksvc, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Errorf("error adding finalizer, %s", err.Error())
+		return err
+	}
 
 	return nil
 }
