@@ -2,7 +2,7 @@
 SYSTEM_NAMESPACE ?= default
 METRICS_DOMAIN ?= example.com
 CLUSTER_NAME ?= knative-test
-EVENTSINK ?= http://localhost:10000
+EVENTSINK ?= http://localhost:8080
 KO_DOCKER_REPO ?= localhost:5000
 KIND_CLUSTER_NAME ?= knative-test
 
@@ -25,6 +25,7 @@ install-crds:
 
 run-controllers:
 	go run cmd/controller/main.go
+	# ko resolve -Rf config/ko
 
 run-webhooks:
 	go run cmd/webhook/main.go
@@ -42,3 +43,17 @@ delete-cluster:
 
 cluster-with-registry:
 	./kind-with-registry.sh
+
+install-tekton:
+	echo "installing tekton pipelines"
+	kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+	echo "installing tekton triggers"
+	kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
+	kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml
+	echo "applying tekton user, role and rolebinding"
+	kubectl apply -f tekton/rbac/admin-role.yaml
+	kubectl apply -f tekton/rbac/crb.yaml 
+	kubectl apply -f tekton/rbac/trigger-webhook-role.yaml
+
+setup-tekton:
+	kubectl apply -f tekton/resources/
