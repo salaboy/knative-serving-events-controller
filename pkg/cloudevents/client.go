@@ -105,8 +105,9 @@ func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) {
 
 		ctx := injectIntoContext(ctx, target)
 		result := client.Send(ctx, event)
+		logger.Info("result", result)
 		if !cloudevents.IsACK(result) {
-			logger.Warnf("Failed to send cloudevent: %s", result.Error())
+			logger.Error("Failed to send cloudevent", result.Error())
 		}
 
 		if cloudevents.IsUndelivered(result) {
@@ -117,7 +118,10 @@ func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) {
 
 	case ServiceUpgraded:
 		event := createEvent(cdEvent.String(), obj)
-		ctx := injectIntoContext(ctx, "http://localhost:8080")
+
+		target := ctx.Value(EventSink).(string)
+
+		ctx := injectIntoContext(ctx, target)
 		result := client.Send(ctx, event)
 		if !cloudevents.IsACK(result) {
 			logger.Warnf("Failed to send cloudevent: %s", result.Error())
@@ -144,6 +148,7 @@ func injectIntoContext(c context.Context, target string) context.Context {
 
 func createEvent(cdEventType string, obj *v1.Service) cloudevents.Event {
 	event := cloudevents.NewEvent()
+
 	event.SetSource(obj.GetNamespace() + "/" + obj.GetName())
 	event.SetID(uuid.NewV4().String())
 	event.SetType(cdEventType)
