@@ -48,11 +48,17 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 	go handlers.StartReceiver(ctx)
 
 	impl := servicereconciler.NewImpl(ctx, r, func(impl *controller.Impl) controller.Options {
-		return controller.Options{}
+		return controller.Options{
+			FinalizerName: "experimental.serving.knative.dev",
+		}
 	})
 
 	logger.Info("Setting up event handlers")
 	servingInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+
+	grcb := func(obj interface{}) {
+		impl.GlobalResync(servingInformer.Informer())
+	}
 
 	handleControllerOf := cache.FilteringResourceEventHandler{
 		FilterFunc: controller.FilterController(&servingv1.Service{}),
@@ -60,6 +66,7 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 	}
 
 	revisionInformer.Informer().AddEventHandler(handleControllerOf)
+	servingInformer.Informer().AddEventHandler(controller.HandleAll(grcb))
 
 	r.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
 

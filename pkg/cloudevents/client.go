@@ -2,6 +2,7 @@ package cloudevent
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -82,7 +83,7 @@ func SetTarget(ctx context.Context, target string) context.Context {
 	return context.WithValue(ctx, EventSink, target)
 }
 
-func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) {
+func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) error {
 	logger := logging.FromContext(ctx)
 
 	if eventType == ServiceDeployed {
@@ -91,48 +92,35 @@ func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) {
 
 	cdEvent, ok := Map[eventType]
 	if !ok {
-		logger.Errorf("no known cloud event mapping found for event type %s", eventType)
-		return
+		err := fmt.Errorf("no known cloud event mapping found for event type %s", eventType)
+		logger.Error(err)
+		return err
 	}
 
 	client := Get(ctx)
 
-	switch eventType {
-	case ServiceDeployed:
-		event := createEvent(cdEvent.String(), obj)
+	event := createEvent(cdEvent.String(), obj)
 
-		target := ctx.Value(EventSink).(string)
+	target := ctx.Value(EventSink).(string)
 
-		ctx := injectIntoContext(ctx, target)
-		result := client.Send(ctx, event)
-		if !cloudevents.IsACK(result) {
-			logger.Warnf("Failed to send cloudevent: %s", result.Error())
-		}
+	ctx = injectIntoContext(ctx, target)
+	result := client.Send(ctx, event)
+	logger.Info("result", result)
+	if !cloudevents.IsACK(result) {
+		err := fmt.Errorf("Failed to send cloudevent, error: %s", result.Error())
+		logger.Error(err)
 
-		if cloudevents.IsUndelivered(result) {
-			logger.Errorf("failed sending cloud event, error: %s", result.Error())
-		}
-
-		logger.Infof("Sent event for %s type", ServiceDeployed)
-
-	case ServiceUpgraded:
-		event := createEvent(cdEvent.String(), obj)
-		ctx := injectIntoContext(ctx, "http://localhost:8080")
-		result := client.Send(ctx, event)
-		if !cloudevents.IsACK(result) {
-			logger.Warnf("Failed to send cloudevent: %s", result.Error())
-		}
-
-		if cloudevents.IsUndelivered(result) {
-			logger.Errorf("cloud event undelivered, error: %s", result.Error())
-		}
-
-		logger.Infof("Sent event for %s type", ServiceUpgraded)
-
-	default:
-		logger.Warnf("unknown event type %s", eventType)
+		return err
 	}
 
+	if cloudevents.IsUndelivered(result) {
+		err := fmt.Errorf("cloud event cannot be delivered, error: %s", result.Error())
+		logger.Error(err)
+
+		return err
+	}
+
+	return nil
 }
 
 func injectIntoContext(c context.Context, target string) context.Context {
@@ -144,6 +132,7 @@ func injectIntoContext(c context.Context, target string) context.Context {
 
 func createEvent(cdEventType string, obj *v1.Service) cloudevents.Event {
 	event := cloudevents.NewEvent()
+
 	event.SetSource(obj.GetNamespace() + "/" + obj.GetName())
 	event.SetID(uuid.NewV4().String())
 	event.SetType(cdEventType)
