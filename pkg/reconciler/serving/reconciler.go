@@ -4,6 +4,7 @@ import (
 	"context"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	cloudeventclient "github.com/salaboy/knative-serving-events-controller/pkg/cloudevents"
@@ -16,9 +17,9 @@ import (
 )
 
 const (
-	LastActiveRevision = "experimental.serving.knative.dev/last-active-annotaion"
+	LastActiveRevision = "experimental.serving.knative.dev/last-active-annotation"
 
-	Finalizer = "experimental.serving.knative.dev"
+	// Finalizer = "experimental.serving.knative.dev"
 )
 
 type Reconciler struct {
@@ -27,6 +28,36 @@ type Reconciler struct {
 
 	config Config
 	client clientset.Interface
+}
+
+// FinalizeKind implements custom logic to finalize v1.Service. Any changes
+// to the objects .Status or .Finalizers will be ignored. Returning a nil or
+// Normal type reconciler.Event will allow the finalizer to be deleted on
+// the resource. The resource passed to FinalizeKind will always have a set
+// deletion timestamp.
+func (r *Reconciler) FinalizeKind(ctx context.Context, o *v1.Service) reconciler.Event {
+	logger := logging.FromContext(ctx)
+
+	ctx = cloudeventclient.ToContext(ctx, r.cloudEventClient)
+	ctx = cloudeventclient.SetTarget(ctx, r.config.EventSink)
+	logger.Info("Received finalizer event for ", o.GetNamespace(), o.GetName())
+
+	err := cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceRemoved, o)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ObserveDeletion implements custom logic to observe deletion of the respective resource
+// with the given key.
+func (r *Reconciler) ObserveDeletion(ctx context.Context, key types.NamespacedName) error {
+	logger := logging.FromContext(ctx)
+
+	logger.Info("Received deletion event for ", key)
+
+	return nil
 }
 
 // ReconcileKind implements custom logic to reconcile v1.Service. Any changes
@@ -41,24 +72,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ksvc *v1.Service) reconc
 	ctx = cloudeventclient.SetTarget(ctx, r.config.EventSink)
 	logger.Infof("Reconciling %s", ksvc.Name)
 
-	/*
-		if !ksvc.ObjectMeta.DeletionTimestamp.IsZero() {
-			logger.Info("service %s/%s deleted", ksvc.GetNamespace(), ksvc.GetName())
-
-		} else {
-			logger.Info("service deletion timestamp: %s", ksvc.ObjectMeta.DeletionTimestamp)
-		}
-	*/
-
-	if !r.checkFinalizer(ctx, ksvc) {
-		return r.setFinalizer(ctx, ksvc)
-	}
-
 	revision, ok := ksvc.Annotations[LastActiveRevision]
 	if !ok {
 		// logger.Infof("annotation does not exist, checking if latest revision is ready")
 		logger.Info("possible creation event")
-		err, ok := r.handleCreation(ctx, ksvc)
+		ok, err := r.handleCreation(ctx, ksvc)
 		if err != nil {
 			return err
 		}
@@ -66,8 +84,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ksvc *v1.Service) reconc
 		if ok {
 			// trigger event for deployed
 			logger.Infof("********* service deployed %s **********", ksvc.GetName())
-			cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceDeployed, ksvc)
-
+			err := cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceDeployed, ksvc)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -85,60 +105,24 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ksvc *v1.Service) reconc
 
 		// trigger event for revision upgrade
 		logger.Infof("************** revision upgraded *************")
-		cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceUpgraded, ksvc)
+		err = cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceUpgraded, ksvc)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	}
 
-	if !ksvc.DeletionTimestamp.IsZero() {
-		logger.Info("+++++++++++++++++++++ detected service deletion ++++++++++++++++++")
-	}
-
-	// TODO: implement spec upgrade detection
-	/*
-		if ksvc.ObjectMeta.Generation == 1 {
-			// new object, log new event
-			logger.Infof("service deployed %#v", ksvc)
-			cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceDeployed, ksvc)
-		} else if ksvc.ObjectMeta.Generation > 1 {
-			logger.Infof("service upgraded %#v", ksvc)
-			cloudeventclient.SendEvent(ctx, cloudeventclient.ServiceUpgraded, ksvc)
-		}
-	*/
-
 	return nil
 }
 
-func (r *Reconciler) checkFinalizer(ctx context.Context, ksvc *v1.Service) bool {
-	for _, f := range ksvc.Finalizers {
-		if f == Finalizer {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (r *Reconciler) setFinalizer(ctx context.Context, ksvc *v1.Service) error {
-	logger := logging.FromContext(ctx)
-
-	ksvc.Finalizers = append(ksvc.Finalizers, Finalizer)
-	_, err := r.client.ServingV1().Services(ksvc.Namespace).Update(ctx, ksvc, metav1.UpdateOptions{})
-	if err != nil {
-		logger.Errorf("error adding finalizer, %s", err.Error())
-		return err
-	}
-
-	return nil
-}
-
-func (r *Reconciler) handleCreation(ctx context.Context, ksvc *v1.Service) (error, bool) {
+func (r *Reconciler) handleCreation(ctx context.Context, ksvc *v1.Service) (bool, error) {
 	logger := logging.FromContext(ctx)
 
 	if ksvc.Status.LatestReadyRevisionName == "" {
 		// not yet ready, this is a new deployment of this svc
 		logger.Infof("ksvc deployed, waiting for revision")
-		return nil, false
+		return false, nil
 	}
 
 	// set the revision
@@ -148,11 +132,11 @@ func (r *Reconciler) handleCreation(ctx context.Context, ksvc *v1.Service) (erro
 	if err != nil {
 		logger.Errorf("error updating revision annotation: %s", err.Error())
 
-		return err, false
+		return false, err
 	}
 
 	logger.Info("added revision metadata for the service, deployed initial version")
-	return nil, true
+	return true, nil
 }
 
 func (r *Reconciler) handleUpgrade(ctx context.Context, ksvc *v1.Service) error {
