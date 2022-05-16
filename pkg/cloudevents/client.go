@@ -2,7 +2,9 @@ package cloudevent
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -73,6 +75,13 @@ func withCloudEventClient(ctx context.Context, cfg *rest.Config) context.Context
 	if err != nil {
 		logger.Panicf("Error creating the cloudevents http protocol: %s", err)
 	}
+	sslDisabledHTTPTransport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	protocol.Client.Transport = sslDisabledHTTPTransport
 
 	cloudEventClient, err := cloudevents.NewClient(protocol, cloudevents.WithUUIDs(), cloudevents.WithTimeNow())
 	if err != nil {
