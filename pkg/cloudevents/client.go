@@ -3,9 +3,11 @@ package cloudevent
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/kelseyhightower/envconfig"
 	uuid "github.com/satori/go.uuid"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/injection"
@@ -33,6 +35,10 @@ var (
 
 type KServiceToCDEventMap map[KServiceEvent]cdevents.CDEventType
 
+type Config struct {
+	EventSink string `default:"http://localhost:8080"`
+}
+
 type CECKey struct{}
 
 type Key int
@@ -41,14 +47,29 @@ const (
 	EventSink Key = iota
 )
 
+var envConfig Config
+
 func init() {
+	err := envconfig.Process("", &envConfig)
+	if err != nil {
+		panic(err)
+	}
+
 	injection.Default.RegisterClient(withCloudEventClient)
+}
+
+func extractHost(target string) string {
+	s := strings.Split(target, "/")
+	return s[2]
 }
 
 func withCloudEventClient(ctx context.Context, cfg *rest.Config) context.Context {
 	logger := logging.FromContext(ctx)
 
-	protocol, err := cloudevents.NewHTTP()
+	protocol, err := cloudevents.NewHTTP(
+		cloudevents.WithHeader("Host", extractHost(envConfig.EventSink)),
+		cloudevents.WithTarget(envConfig.EventSink),
+	)
 	if err != nil {
 		logger.Panicf("Error creating the cloudevents http protocol: %s", err)
 	}
