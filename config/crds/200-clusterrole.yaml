@@ -41,7 +41,7 @@ rules:
   # Allow us to reconcile our resources.
   - apiGroups: ["serving.knative.dev"]
     resources: ["*"]
-    verbs: ["get", "list", "update", "watch"]
+    verbs: ["get", "list", "update", "watch", "patch"]
 
   # The webhook configured the namespace as the OwnerRef on various cluster-scoped resources,
   # which requires we can Get the system namespace.
