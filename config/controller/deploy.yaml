@@ -46,7 +46,7 @@ spec:
       - name: controller
         # This is the Go import path for the binary that is containerized
         # and substituted here.
-        image: ishankhare07/controller
+        image: ishankhare07/controller:sha256-27358c8d8de3ff1817881005ee668484455d14d29edd213c2152de7df3363036.sbom
         resources:
           requests:
             cpu: 100m
