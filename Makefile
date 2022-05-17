@@ -2,9 +2,9 @@
 SYSTEM_NAMESPACE ?= default
 METRICS_DOMAIN ?= example.com
 CLUSTER_NAME ?= knative-test
-EVENTSINK ?= http://localhost:8000
-KO_DOCKER_REPO ?= localhost:5000
-KIND_CLUSTER_NAME ?= knative-test
+EVENTSINK ?= https://broker.ishankhare.dev/default/default
+KO_DOCKER_REPO ?= ishankhare07
+# KIND_CLUSTER_NAME ?= knative-test
 CRED_PATH ?= /Users/ishankhare/Downloads/tonal-baton-181908-c09004360185.json
 
 install-knative:
@@ -25,8 +25,8 @@ install-crds:
 	done
 
 run-controllers:
-	go run cmd/controller/main.go
-	# ko resolve -Rf config/ko
+	# go run cmd/controller/main.go
+	ko resolve -RBf config/ko # builds and pushes to docker registry
 
 run-webhooks:
 	go run cmd/webhook/main.go

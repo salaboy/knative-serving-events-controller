@@ -150,6 +150,8 @@ func SendEvent(ctx context.Context, eventType KServiceEvent, obj *v1.Service) er
 		return err
 	}
 
+	logger.Infof("successfully sent event to %v with host ", target)
+
 	return nil
 }
 
@@ -167,6 +169,7 @@ func createEvent(cdEventType string, obj *v1.Service) cloudevents.Event {
 	event.SetID(uuid.NewV4().String())
 	event.SetType(cdEventType)
 	event.SetTime(time.Now())
+	event.SetData(cloudevents.ApplicationJSON, map[string]interface{}{})
 
 	return event
 }
